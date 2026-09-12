@@ -1406,57 +1406,71 @@ p:last-child { margin-bottom: 0; }
     to   { transform: rotate(calc(var(--a) * 1.25)) scaleX(1); opacity: .95; }
 }
 
-/* The solid itself: four quads in real 3D, slowly turning. */
+/* The prism the beam strikes. Small, glassy, sitting where the beam ends and
+   the spectrum begins - it is the hinge of the whole idea, not the subject. */
 .prism-solid {
-    position: relative; width: 24%; aspect-ratio: 1; z-index: 1;
+    position: absolute; left: 26%; top: 50%; translate: -50% -50%;
+    width: clamp(58px, 7vw, 92px); aspect-ratio: 1; z-index: 1;
     transform-style: preserve-3d;
-    animation: solid-turn 22s linear infinite;
+    animation: solid-turn 26s linear infinite;
 }
-/* Reads as one lit glass solid. The old 1.5px white outline on a near-empty
-   fill made each of the four faces look like a picture frame with no picture
-   in it, which is the opposite of the intent. */
 .prism-solid span {
     position: absolute; inset: 0;
-    border: 1px solid rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.14);
     background:
-        linear-gradient(150deg, rgba(139,62,255,.42), rgba(76,196,240,.16) 58%, rgba(255,255,255,.06)),
+        linear-gradient(150deg, rgba(139,62,255,.45), rgba(76,196,240,.18) 58%, rgba(255,255,255,.07)),
         linear-gradient(0deg, rgba(8,8,11,.35), rgba(8,8,11,.35));
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.22);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.24);
 }
-.prism-solid span:nth-child(1) { transform: rotateY(  0deg) translateZ(42px); }
-.prism-solid span:nth-child(2) { transform: rotateY( 90deg) translateZ(42px); }
-.prism-solid span:nth-child(3) { transform: rotateY(180deg) translateZ(42px); }
-.prism-solid span:nth-child(4) { transform: rotateY(270deg) translateZ(42px); }
+.prism-solid span:nth-child(1) { transform: rotateY(  0deg) translateZ(30px); }
+.prism-solid span:nth-child(2) { transform: rotateY( 90deg) translateZ(30px); }
+.prism-solid span:nth-child(3) { transform: rotateY(180deg) translateZ(30px); }
+.prism-solid span:nth-child(4) { transform: rotateY(270deg) translateZ(30px); }
 @keyframes solid-turn { to { transform: rotateX(-14deg) rotateY(360deg); } }
 
-/* Render chips orbiting the prism — the "output". */
-/* Above the glass solid. The renders are the subject here; when the solid
-   sat on top of them its translucent faces read as empty picture frames
-   laid over the work. */
-.prism-orbit { position: absolute; inset: 0; z-index: 3; transform-style: preserve-3d; animation: orbit 30s linear infinite; }
-/* The orbit has to fit the stage, which is the narrow grid column: at the
-   1320px wrap that column is ~536px, so anything past 268px from its centre is
-   cut off by `.prism-hero { overflow: hidden }` further down. Radius plus half
-   a panel is held under that at every width, which is why the two clamps are
-   tied to each other rather than picked independently:
-     1440vw -> 186 + 74 = 260 of 270 available
-     1200vw -> 174 + 66 = 240 of 248
-     1000vw -> 145 + 55 = 200 of 207
-   Six panels sit 60deg apart, so the chord equals the radius — a 186 radius
-   against a 148 panel leaves a 38px gap and they never overlap. */
+/* The renders: what comes OUT of the prism.
+
+   This was a six-panel carousel turning through a full 360deg inside the narrow
+   grid column. Six cards on one circle inevitably crossed each other, ran into
+   the glass solid and were clipped at the column edge, and each one had to stay
+   small to fit - so the work itself was never actually legible. For a studio
+   that sells renders, that was the wrong thing to optimise.
+
+   It is now three cards, roughly twice the size, placed along the spectrum fan
+   where the light lands. Nothing rotates through anything else, so nothing can
+   collide or clip; each drifts on its own slow timer to keep the composition
+   alive. */
+.prism-orbit { position: absolute; inset: 0; z-index: 3; transform-style: preserve-3d; }
 .prism-orbit figure {
-    position: absolute; left: 50%; top: 50%; margin: 0;
-    width: clamp(86px, 10vw, 134px); aspect-ratio: 4/3;
-    border-radius: 16px; overflow: hidden;
+    position: absolute; margin: 0;
+    width: clamp(118px, 14.5vw, 196px); aspect-ratio: 4/3;
+    border-radius: 18px; overflow: hidden;
     background: var(--bg-raise-2);
-    box-shadow: 0 22px 40px -22px rgba(0,0,0,.5);
-    transform: translate(-50%, -50%) rotateY(calc(var(--i) * 60deg)) translateZ(clamp(140px, 14.5vw, 186px));
-    /* Without this the three back-facing panels show through the glass solid
-       mirrored, which is what made the stage look cluttered. */
-    backface-visibility: hidden;
+    box-shadow: 0 30px 60px -28px rgba(0,0,0,.85), 0 0 0 1px rgba(255,255,255,.08);
+    will-change: transform;
 }
+/* Vertical spacing is what keeps these apart: they share horizontal space by
+   design (that is the fan), so each band has ~40px of clearance above and below
+   at the 1320px wrap - more than twice the drift amplitude, so no two can ever
+   touch however the timers line up. */
+.prism-orbit figure:nth-child(1) { right: 38%; top:  2%; animation: drift-a 13s var(--ease) infinite alternate; }
+.prism-orbit figure:nth-child(2) { right:  4%; top: 38%; animation: drift-b 16s var(--ease) infinite alternate; z-index: 2; }
+.prism-orbit figure:nth-child(3) { right: 32%; top: 70%; animation: drift-c 15s var(--ease) infinite alternate; }
+.prism-orbit figure:nth-child(n+4) { display: none; }   /* the pool supplies more than are used */
 .prism-orbit img { width: 100%; height: 100%; object-fit: cover; }
-@keyframes orbit { to { transform: rotateY(-360deg); } }
+
+@keyframes drift-a {
+    from { transform: perspective(1200px) rotateY( 9deg) translate3d(0,   0, 0); }
+    to   { transform: perspective(1200px) rotateY( 5deg) translate3d(-8px, 10px, 26px); }
+}
+@keyframes drift-b {
+    from { transform: perspective(1200px) rotateY(-7deg) translate3d(0,  0, 30px); }
+    to   { transform: perspective(1200px) rotateY(-3deg) translate3d(10px, -11px, 52px); }
+}
+@keyframes drift-c {
+    from { transform: perspective(1200px) rotateY( 7deg) translate3d(0,   0, 10px); }
+    to   { transform: perspective(1200px) rotateY( 3deg) translate3d(-12px, -8px, 32px); }
+}
 
 @media (max-width: 900px) {
     .prism-hero { grid-template-columns: 1fr; }
@@ -1878,7 +1892,13 @@ main, .site-footer { position: relative; z-index: 1; }
 
 @media (max-width: 900px) {
     .prism-stage { border-radius: 28px; }
-    .prism-orbit figure { width: clamp(76px, 19vw, 118px); }   /* radius floors at 140px here; keep the chord clear */
+    /* One column here, so the stage is wider than it is in the desktop grid -
+       the cards can stay large and just sit closer together. */
+    .prism-orbit figure { width: clamp(104px, 27vw, 168px); }
+    .prism-orbit figure:nth-child(1) { right: 46%; top: 10%; }
+    .prism-orbit figure:nth-child(2) { right:  6%; top: 33%; }
+    .prism-orbit figure:nth-child(3) { right: 38%; top: 60%; }
+    .prism-solid { left: 22%; }
 
     /* The flythrough keeps its 3D camera on phones — it is the signature
        moment of the site. It is made affordable instead of being removed:
