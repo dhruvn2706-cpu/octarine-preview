@@ -1,0 +1,77 @@
+/* The only JavaScript on this site, and it is here for one reason: the four
+   numbers should count up as they arrive on screen, and CSS cannot do that.
+   A timed animation runs on page load, long before anyone scrolls down to them.
+   The scroll-driven alternative, `animation-timeline: view()`, is the thing the
+   note in style.css already warned about - it reports as supported and then has
+   no effect.
+
+   This uses a scroll listener and getBoundingClientRect rather than an
+   IntersectionObserver, because a rect check is synchronous and has no
+   dependency on the page's visibility state - it behaves the same whether the
+   tab is foregrounded, restored from bfcache, or printed to.
+
+   Without this file the numbers still read correctly: the CSS in head.php rests
+   at the final value, so no-JS and reduced-motion visitors see 5,037+ rather
+   than watching it arrive. */
+(function () {
+  var els = [].slice.call(document.querySelectorAll('.count[data-final]'));
+  if (!els.length || !window.requestAnimationFrame) return;
+  if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  function slot(el) {                          // .count--2  ->  2
+    var m = /count--(\d+)/.exec(el.className);
+    return m ? +m[1] : null;
+  }
+
+  var pending = els.slice();
+
+  function run(el) {
+    var n      = slot(el);
+    if (n === null) return;
+    var target = parseInt(el.getAttribute('data-final'), 10) || 0,
+        prop   = '--n' + n,
+        delay  = n * 150,                      // the four resolve in sequence
+        dur    = 1500,
+        t0     = null,
+        done   = false;
+
+    function land() {                          // always end on the real number
+      if (done) return;
+      done = true;
+      el.style.setProperty(prop, target);
+    }
+    // Nothing is zeroed until the moment it is about to count, and a timer
+    // guarantees the final value even if rAF never runs - a throttled or
+    // backgrounded tab must not leave "0+ projects completed" on screen.
+    setTimeout(land, delay + dur + 500);
+    el.style.setProperty(prop, 0);
+
+    (function step(now) {
+      if (done) return;
+      if (t0 === null) t0 = now;
+      var p = (now - t0 - delay) / dur;
+      if (p < 0) { requestAnimationFrame(step); return; }
+      if (p >= 1) { land(); return; }
+      el.style.setProperty(prop, Math.round(target * (1 - Math.pow(1 - p, 3))));
+      requestAnimationFrame(step);
+    })(performance.now());
+  }
+
+  function sweep() {
+    for (var i = pending.length - 1; i >= 0; i--) {
+      var r = pending[i].getBoundingClientRect();
+      if (r.bottom > 0 && r.top < (window.innerHeight || 0) * 0.9) {
+        run(pending.splice(i, 1)[0]);          // count once, then stop watching
+      }
+    }
+    if (!pending.length) {
+      removeEventListener('scroll', sweep);
+      removeEventListener('resize', sweep);
+    }
+  }
+
+  addEventListener('scroll', sweep, { passive: true });
+  addEventListener('resize', sweep);
+  sweep();                                     // in case they are already in view
+  window.octarineCountSweep = sweep;           // lets the preview re-arm on page switch
+})();

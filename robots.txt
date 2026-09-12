@@ -1,0 +1,3 @@
+# Preview copy. The real site is https://octarinestudio.com/
+User-agent: *
+Disallow: /
