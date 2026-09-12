@@ -389,41 +389,82 @@ p:last-child { margin-bottom: 0; }
 .svc-row:hover .svc-go { background: var(--accent); border-color: var(--accent); transform: translate(3px, -3px); }
 
 /* ----------------------------------------------------- 10. before / after */
+/* ------------------------------------------- before / after review slider
+   Both halves are real, finished frames of the same camera - one graded for
+   midday, one for dusk. The panel used to carry a blueprint filter
+   (grayscale + sepia + hue-rotate), which existed because the left side was
+   once a fake "line study"; on a real render it just looked broken, so it is
+   gone. Dragging used to be the browser's native `resize` corner, which is
+   invisible on a phone and unrecognisable on a desktop - it is now a proper
+   handle on a full-width range input, so it drags anywhere, works on touch and
+   is reachable from the keyboard. */
 .compare {
+    --pos: 50%;
     position: relative; overflow: hidden;
     border: 1px solid var(--line);
     aspect-ratio: 16 / 9;
     background: var(--after-img) center/cover no-repeat;
-    /* Container units below are measured against this box. */
-    container-type: size;
+    container-type: size;        /* container units below measure against this box */
+    user-select: none;
 }
 .compare-before {
     position: absolute; left: 0; top: 0; height: 100%;
-    width: 50%; min-width: 10%; max-width: 100%;
-    /* `resize` gives a real drag handle with no script at all. */
-    resize: horizontal;
+    width: var(--pos);
     overflow: hidden;
-    border-right: 2px solid var(--accent);
 }
 .compare-before img {
     /* Locked to the OUTER box, not the shrinking panel, so both halves line up. */
     width: 100cqw; height: 100cqh; max-width: none;
     object-fit: cover;
-    filter: grayscale(1) contrast(1.4) brightness(.6) sepia(.55) hue-rotate(212deg) saturate(2.8);
 }
-/* Marks the native resize corner so the drag affordance is obvious. */
-.compare-before::after {
-    content: ''; position: absolute; right: 0; bottom: 0;
-    width: 24px; height: 24px; background: var(--accent);
-    clip-path: polygon(100% 0, 100% 100%, 0 100%);
+
+/* The divider and its grab handle. Purely decorative - the range input over
+   the top is what actually takes the drag. */
+.compare-divider {
+    position: absolute; top: 0; bottom: 0; left: var(--pos);
+    width: 2px; margin-left: -1px; z-index: 3;
+    background: linear-gradient(to bottom,
+        rgba(255,255,255,.25), #fff 18%, #fff 82%, rgba(255,255,255,.25));
     pointer-events: none;
 }
+.compare-divider::after {
+    content: ''; position: absolute; top: 50%; left: 50%;
+    translate: -50% -50%;
+    width: clamp(38px, 5vw, 52px); aspect-ratio: 1; border-radius: 50%;
+    background: rgba(10, 8, 16, .58) center / 56% no-repeat
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l-5 6 5 6M15 6l5 6-5 6'/%3E%3C/svg%3E");
+    border: 1.5px solid rgba(255,255,255,.9);
+    box-shadow: 0 14px 34px -12px rgba(0,0,0,.9), 0 0 0 1px rgba(0,0,0,.25);
+    backdrop-filter: blur(6px);
+}
+
+/* The real control. Invisible, full-bleed, so the whole frame is draggable.
+   `touch-action: pan-y` keeps vertical scrolling working over it on a phone. */
+.compare-range {
+    position: absolute; inset: 0; z-index: 4;
+    width: 100%; height: 100%; margin: 0; padding: 0;
+    opacity: 0; cursor: ew-resize;
+    touch-action: pan-y;
+    -webkit-appearance: none; appearance: none; background: transparent;
+}
+.compare-range::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 54px; height: 100%; cursor: ew-resize;
+}
+.compare-range::-moz-range-thumb {
+    width: 54px; height: 100%; border: 0; border-radius: 0; background: transparent; cursor: ew-resize;
+}
+.compare-range:focus-visible { outline: none; }
+.compare-range:focus-visible ~ .compare-divider::after {
+    box-shadow: 0 14px 34px -12px rgba(0,0,0,.9), 0 0 0 3px var(--accent);
+}
+
 .compare-tag {
-    position: absolute; top: 18px;
+    position: absolute; top: 18px; z-index: 3;
     font-family: var(--font-mono); font-size: 10px;
     letter-spacing: .2em; text-transform: uppercase;
     padding: 7px 12px; background: rgba(8,8,11,.66);
     border: 1px solid var(--line);
+    pointer-events: none;
 }
 .compare-tag--l { left: 18px; }
 .compare-tag--r { right: 18px; color: var(--accent); }
@@ -1975,20 +2016,13 @@ main, .site-footer { position: relative; z-index: 1; }
 
 /* =============================================================================
    46. TOUCH: the wipe wipes itself
-   `resize` offers no draggable handle on a touchscreen, so rather than losing
-   the before/after entirely the divider sweeps back and forth on its own.
+   The before/after is a range input now, which a touchscreen drags natively,
+   so nothing here has to compensate for it.
    ========================================================================== */
 @media (hover: none) {
-    .compare-before {
-        resize: none;
-        animation: self-wipe 9s ease-in-out infinite alternate;
-    }
-    .compare-before::after { display: none; }   /* no drag corner to advertise */
-    @keyframes self-wipe {
-        from { width: 24%; }
-        to   { width: 82%; }
-    }
-    .compare-hint::after { content: ' — or just watch'; }
+    /* The slider takes touch directly now, so the frame no longer has to sweep
+       on its own to prove it is a before/after. */
+    .compare-divider::after { border-width: 1.5px; }
 
     /* No hover on a phone, so every tile turns rather than only the first four. */
     .mosaic .tile { animation: tile-idle 16s var(--ease) infinite;
@@ -1999,11 +2033,6 @@ main, .site-footer { position: relative; z-index: 1; }
 /* Small screens get the self-wipe too, not only devices that report no hover —
    a phone in desktop-site mode still can't drag a resize handle. */
 @media (max-width: 680px) {
-    .compare-before {
-        resize: none;
-        animation: self-wipe 9s ease-in-out infinite alternate;
-    }
-    .compare-before::after { display: none; }
     .compare-hint { font-size: 9px; }
 }
 

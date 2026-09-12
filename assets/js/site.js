@@ -75,3 +75,21 @@
   sweep();                                     // in case they are already in view
   window.octarineCountSweep = sweep;           // lets the preview re-arm on page switch
 })();
+
+/* Before/after slider.
+   The divider position lives in a custom property so the CSS does the drawing;
+   this only copies the range's value into it. Without this the frame still
+   reads correctly - CSS defaults --pos to 50%, so it shows an even split. */
+(function () {
+  var frames = document.querySelectorAll('.compare');
+  for (var i = 0; i < frames.length; i++) {
+    (function (frame) {
+      var range = frame.querySelector('.compare-range');
+      if (!range) return;
+      function apply() { frame.style.setProperty('--pos', range.value + '%'); }
+      range.addEventListener('input', apply);
+      range.addEventListener('change', apply);
+      apply();
+    })(frames[i]);
+  }
+})();
