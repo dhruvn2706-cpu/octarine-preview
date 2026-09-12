@@ -37,6 +37,10 @@
 @property --n3 { syntax: '<integer>'; initial-value: 0; inherits: false; }
 .count--3 { counter-reset: c var(--n3); min-width: 1ch; --n3: 7; }
 </style>
+<noscript><style>
+/* No JavaScript, so nothing will be counting - draw the finished number. */
+.count::after { content: attr(data-final); }
+</style></noscript>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>

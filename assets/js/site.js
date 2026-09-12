@@ -17,6 +17,14 @@
    at the final value, so no-JS and reduced-motion visitors see 5,037+ rather
    than watching it arrive. */
 (function () {
+  // @property is the Properties & Values API, the same one that exposes
+  // CSS.registerProperty. Without it `counter-reset: c var(--nN)` cannot
+  // resolve, so the static number is the only honest thing to show.
+  if (!(window.CSS && typeof CSS.registerProperty === 'function')) {
+    document.documentElement.className += ' no-css-props';
+    return;
+  }
+
   var els = [].slice.call(document.querySelectorAll('.count[data-final]'));
   if (!els.length || !window.requestAnimationFrame) return;
   if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;

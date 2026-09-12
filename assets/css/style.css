@@ -286,8 +286,18 @@ p:last-child { margin-bottom: 0; }
 .count { font-variant-numeric: tabular-nums; display: inline-block; text-align: left; }
 .count::after { content: counter(c); }
 
-/* Browsers without @property support still show the final number. */
-@supports not (background: paint(x)) { .count::after { content: attr(data-final); } }
+/* Browsers without @property fall back to the static number. The test used to
+   be `@supports not (background: paint(x))`, which is the CSS Painting API - a
+   Chrome-only feature that Safari has never shipped and that has nothing to do
+   with @property, which Safari has supported since 16.4. So the rule fired on
+   every iPhone and drew the number from the data-final attribute instead of the
+   live counter: the value was updating correctly and Safari was painting a
+   frozen string over it. That is why the count ran on desktop and not on phones.
+
+   The real test is CSS.registerProperty, which is the same API as @property.
+   footer.php adds `no-css-props` to <html> when it is missing; <noscript> below
+   covers the no-JavaScript case, where there is no animation to show anyway. */
+:root.no-css-props .count::after { content: attr(data-final); }
 
 /* --------------------------------------------------------------- 7. marquee */
 .marquee {
