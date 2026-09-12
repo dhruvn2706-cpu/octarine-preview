@@ -5,10 +5,13 @@
    note in style.css already warned about - it reports as supported and then has
    no effect.
 
-   This uses a scroll listener and getBoundingClientRect rather than an
-   IntersectionObserver, because a rect check is synchronous and has no
-   dependency on the page's visibility state - it behaves the same whether the
-   tab is foregrounded, restored from bfcache, or printed to.
+   A rect check on scroll rather than an IntersectionObserver: it is synchronous
+   and has no dependency on the page's visibility state, so it behaves the same
+   whether the tab is foregrounded, restored from bfcache, or printed to.
+
+   Each number re-arms once it has left the viewport, so scrolling away and back
+   - in either direction - runs the count again rather than showing a number
+   that is already finished.
 
    Without this file the numbers still read correctly: the CSS in head.php rests
    at the final value, so no-JS and reduced-motion visitors see 5,037+ rather
@@ -23,31 +26,33 @@
     return m ? +m[1] : null;
   }
 
-  var pending = els.slice();
+  var items = [];
+  for (var i = 0; i < els.length; i++) {
+    var n = slot(els[i]);
+    if (n !== null) items.push({ el: els[i], n: n, counted: false, token: 0 });
+  }
+  if (!items.length) return;
 
-  function run(el) {
-    var n      = slot(el);
-    if (n === null) return;
-    var target = parseInt(el.getAttribute('data-final'), 10) || 0,
-        prop   = '--n' + n,
-        delay  = n * 150,                      // the four resolve in sequence
+  function run(item) {
+    var el     = item.el,
+        target = parseInt(el.getAttribute('data-final'), 10) || 0,
+        prop   = '--n' + item.n,
+        delay  = item.n * 150,                 // the four resolve in sequence
         dur    = 1500,
         t0     = null,
-        done   = false;
+        mine   = ++item.token;                 // a newer run supersedes this one
 
-    function land() {                          // always end on the real number
-      if (done) return;
-      done = true;
+    function land() {
+      if (item.token !== mine) return;
       el.style.setProperty(prop, target);
     }
-    // Nothing is zeroed until the moment it is about to count, and a timer
-    // guarantees the final value even if rAF never runs - a throttled or
-    // backgrounded tab must not leave "0+ projects completed" on screen.
+    // A timer guarantees the final value even if rAF never runs, so a throttled
+    // or backgrounded tab can never strand a 0 on screen.
     setTimeout(land, delay + dur + 500);
     el.style.setProperty(prop, 0);
 
     (function step(now) {
-      if (done) return;
+      if (item.token !== mine) return;         // superseded, stop quietly
       if (t0 === null) t0 = now;
       var p = (now - t0 - delay) / dur;
       if (p < 0) { requestAnimationFrame(step); return; }
@@ -58,22 +63,21 @@
   }
 
   function sweep() {
-    for (var i = pending.length - 1; i >= 0; i--) {
-      var r = pending[i].getBoundingClientRect();
-      if (r.bottom > 0 && r.top < (window.innerHeight || 0) * 0.9) {
-        run(pending.splice(i, 1)[0]);          // count once, then stop watching
-      }
-    }
-    if (!pending.length) {
-      removeEventListener('scroll', sweep);
-      removeEventListener('resize', sweep);
+    var vh = window.innerHeight || 0;
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i], r = it.el.getBoundingClientRect();
+      var visible = r.bottom > 0 && r.top < vh * 0.9;
+      // Clear of the viewport by a margin before re-arming, so hovering on the
+      // boundary cannot make it restart over and over.
+      var gone    = r.bottom < -60 || r.top > vh + 60;
+      if (visible && !it.counted) { it.counted = true; run(it); }
+      else if (gone && it.counted) { it.counted = false; }
     }
   }
 
   addEventListener('scroll', sweep, { passive: true });
   addEventListener('resize', sweep);
   sweep();                                     // in case they are already in view
-  window.octarineCountSweep = sweep;           // lets the preview re-arm on page switch
 })();
 
 /* Before/after slider.
