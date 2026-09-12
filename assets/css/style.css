@@ -1901,59 +1901,91 @@ main, .site-footer { position: relative; z-index: 1; }
 .prism-hero { overflow: hidden; }
 
 @media (max-width: 900px) {
-    /* PHONE HERO.
-       The desktop composition is a fan: the three renders spread horizontally
-       away from the prism, which needs width the phone does not have. Dropped
-       into one column it became a tall empty box with the cards sliding out of
-       the bottom of it, which is what it was doing.
+    /* PHONE HERO — a moving strip of the work.
 
-       So the phone gets a different arrangement of the same parts - a fanned
-       deck, the way you would hold three prints. It is compact, all three read
-       at once, and nothing is cut off. The beam, the spectrum blades and the
-       glass solid are hidden here: each one needs horizontal room to say what
-       it is, and at 390px they only add noise. */
+       The desktop composition is a fan: the renders spread horizontally away
+       from the prism, which needs width a phone does not have. What reads well
+       in a narrow column is a band travelling across it, so that is what the
+       phone gets - the same renders, running as a continuous marquee.
+
+       The set is emitted twice (see index.php). The track is therefore exactly
+       two identical halves, so translating it by -50% lands the second copy
+       precisely where the first began and the loop closes invisibly. No
+       duplicate downloads: the two halves are the same three files.
+
+       The beam, the spectrum blades and the glass solid are hidden here. Each
+       needs horizontal room to read as what it is, and at 390px they only add
+       noise. */
     .prism-stage {
         border-radius: 0;
         aspect-ratio: auto;
-        /* width must be explicit: every child is absolutely positioned, so with
-           the auto inline margins above the box shrink-to-fits to zero. */
+        /* explicit width: every child is absolutely positioned, so with the
+           auto inline margins above the box would shrink-to-fit to zero */
         width: 100%;
         max-width: none;
         margin-inline: 0;
-        height: clamp(190px, 54vw, 250px);
-        perspective: 900px;
-        /* the deck's top card sits high in the box, so it needs real clearance
-           from the "renders delivered" line that ends the copy above it */
+        height: clamp(200px, 58vw, 262px);
+        perspective: none;
         margin-top: clamp(26px, 7vw, 46px);
+        overflow: hidden;
+        /* the strip fades out at both edges instead of being cut off, so it
+           reads as continuing past the screen rather than stopping at it */
+        -webkit-mask-image: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent);
+                mask-image: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent);
     }
     .prism-beam, .prism-fan, .prism-solid { display: none; }
 
+    .prism-orbit {
+        /* the desktop rule is `inset: 0`; that has to be cleared BEFORE top is
+           set, or the shorthand wins and the track loses its vertical centring */
+        inset: auto auto auto 0;
+        position: absolute; top: 50%;
+        display: flex; align-items: center; gap: clamp(10px, 3vw, 16px);
+        width: max-content;
+        animation: render-strip 26s linear infinite;
+    }
     .prism-orbit figure {
-        width: 44%;
-        top: 50%;
+        position: static;                /* out of the desktop absolute layout */
+        flex: 0 0 auto;
         border-radius: 14px;
-        box-shadow: 0 20px 40px -18px rgba(0,0,0,.9), 0 0 0 1px rgba(255,255,255,.1);
+        animation: none;                 /* the track moves, not the cards */
+        box-shadow: 0 18px 36px -16px rgba(0,0,0,.9), 0 0 0 1px rgba(255,255,255,.09);
     }
-    /* Right/top from the desktop rules are cleared so these can drive it. */
-    .prism-orbit figure:nth-child(1) { right: auto; left:  0;   z-index: 1;
-        animation: deck-a 12s var(--ease) infinite alternate; }
-    .prism-orbit figure:nth-child(2) { right: auto; left: 28%;  z-index: 3;
-        animation: deck-b 14s var(--ease) infinite alternate; }
-    .prism-orbit figure:nth-child(3) { right: auto; left: 56%;  z-index: 2;
-        animation: deck-c 13s var(--ease) infinite alternate; }
+    .prism-orbit figure:nth-child(n+4) { display: block; }   /* the second half */
 
-    @keyframes deck-a {
-        from { transform: translateY(-50%) rotate(-5deg) translate3d(0, 6px, 0); }
-        to   { transform: translateY(-50%) rotate(-3.5deg) translate3d(0, -2px, 0); }
+    /* The three cards are deliberately three different shapes. A row of
+       identical tiles reads as a conveyor belt; a wide frame, an upright one
+       and a letterbox read as a contact sheet someone laid out. It also crops
+       far less: the renders are close to 2:1, so the desktop 4/3 box was
+       throwing away a third of every image. The upright card is the one
+       exception - it is cropped on purpose, the way a tall detail shot is.
+
+       The pattern repeats every three, which is what keeps the two halves
+       identical in width - that is the whole basis of the seamless -50% loop,
+       so any change here must stay on 3n. */
+    .prism-orbit figure:nth-child(3n+1) {
+        width: clamp(150px, 46vw, 196px);
+        aspect-ratio: 3 / 2;
+        transform: translateY(-16px) rotate(-1.8deg);
     }
-    @keyframes deck-b {
-        from { transform: translateY(-52%) rotate(0deg) translate3d(0, -4px, 0) scale(1.04); }
-        to   { transform: translateY(-52%) rotate(1deg) translate3d(0, 4px, 0) scale(1.04); }
+    .prism-orbit figure:nth-child(3n+2) {
+        width: clamp(112px, 34vw, 146px);
+        aspect-ratio: 3 / 4;
+        transform: translateY(10px) rotate(1.4deg);
     }
-    @keyframes deck-c {
-        from { transform: translateY(-48%) rotate(5deg) translate3d(0, -3px, 0); }
-        to   { transform: translateY(-48%) rotate(3.5deg) translate3d(0, 5px, 0); }
+    .prism-orbit figure:nth-child(3n+3) {
+        width: clamp(138px, 42vw, 180px);
+        aspect-ratio: 16 / 9;
+        transform: translateY(-2px) rotate(.8deg);
+        opacity: .94;
     }
+
+    @keyframes render-strip {
+        from { transform: translate(0, -50%); }
+        to   { transform: translate(-50%, -50%); }
+    }
+    /* the gap doubles at the seam otherwise, which shows as a stutter */
+    .prism-orbit figure:last-child { margin-right: clamp(10px, 3vw, 16px); }
 
     /* The flythrough keeps its 3D camera on phones — it is the signature
        moment of the site. It is made affordable instead of being removed:
