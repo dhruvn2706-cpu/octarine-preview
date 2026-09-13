@@ -1501,8 +1501,80 @@ p:last-child { margin-bottom: 0; }
     perspective: 900px; perspective-origin: 50% 46%;
     background: radial-gradient(120% 90% at 50% 40%, #17102b 0%, var(--bg) 62%);
 }
+
+/* The corridor needed a floor.
+
+   A flat radial gave the renders nothing to travel through: no depth cue in the
+   frame, so the showpiece read as cards fading in rather than a camera moving
+   into a space. Two decorative layers fix that, and both sit BEHIND the work -
+   the renders stay the brightest thing on screen, which is the whole point of
+   the section.
+
+     ::before   a real perspective grid laid into the floor plane. It is not a
+                faked gradient: the element is rotated into the floor and the
+                stage's own 900px perspective converges it, so it shares a
+                vanishing point with the frames flying over it. Drafting paper
+                made spatial, which is the thing this studio actually sells.
+                It drifts one grid square towards the viewer on a loop, so the
+                space reads as moving even before you scroll.
+
+     ::after    a prism bloom at the vanishing point - the light the frames
+                emerge from - breathing slowly so the frame is never quite
+                still. Brand spectrum, kept low so it tints rather than glows.
+
+   Both are masked to nothing well before the edges, so there is no hard seam
+   against the stage background. */
+.fly-stage::before,
+.fly-stage::after { content: ''; position: absolute; pointer-events: none; z-index: 0; }
+
+.fly-stage::before {
+    left: 50%; top: 50%;
+    width: 190vw; height: 110vh;
+    transform-origin: 50% 0;
+    transform: translateX(-50%) rotateX(82deg);
+    /* One cell size drives the grid AND the drift, so they can never fall out of
+       step - the loop has to travel exactly one cell or the movement stutters. */
+    --fly-cell: 132px;
+    background-image:
+        repeating-linear-gradient(90deg, rgba(163,175,255,.50) 0 1px, transparent 1px var(--fly-cell)),
+        repeating-linear-gradient(0deg,  rgba(163,175,255,.34) 0 1px, transparent 1px var(--fly-cell));
+    /* Two masks intersected. The radial keeps the grid off the left and right
+       edges so it never draws a box around the frames; the linear dissolves the
+       plane's own top edge, which otherwise lands as a hard bright rule straight
+       across the horizon - the one thing that gave the effect away. */
+    -webkit-mask-image:
+        radial-gradient(62% 72% at 50% 0%, #000 0%, rgba(0,0,0,.7) 36%, transparent 84%),
+        linear-gradient(to bottom, transparent 0%, #000 16%, #000 58%, transparent 94%);
+    -webkit-mask-composite: source-in;
+            mask-image:
+        radial-gradient(62% 72% at 50% 0%, #000 0%, rgba(0,0,0,.7) 36%, transparent 84%),
+        linear-gradient(to bottom, transparent 0%, #000 16%, #000 58%, transparent 94%);
+            mask-composite: intersect;
+    animation: fly-floor 7s linear infinite;
+}
+@keyframes fly-floor { to { background-position: 0 var(--fly-cell), 0 var(--fly-cell); } }
+
+.fly-stage::after {
+    left: 50%; top: 46%;
+    width: min(880px, 92vw); aspect-ratio: 1;
+    transform: translate(-50%, -50%);
+    /* No blur filter here: the gradient is already soft, and blurring an
+       880px layer every frame is the one thing that made this section
+       expensive enough to matter on a phone. */
+    background: radial-gradient(circle,
+        rgba(126, 94, 255, .26) 0%,
+        rgba(64, 138, 255, .13) 36%,
+        transparent 68%);
+    animation: fly-bloom 11s var(--ease) infinite alternate;
+}
+@keyframes fly-bloom {
+    from { opacity: .5; transform: translate(-50%, -50%) scale(.9); }
+    to   { opacity: 1;  transform: translate(-50%, -50%) scale(1.1); }
+}
+
 .fly-cam {
     position: absolute; inset: 0; transform-style: preserve-3d;
+    z-index: 1;                      /* over the floor and the bloom */
 }
 .fly-cam figure {
     position: absolute; left: 50%; top: 50%; margin: 0;
@@ -1608,7 +1680,8 @@ p:last-child { margin-bottom: 0; }
 
 @media (prefers-reduced-motion: reduce) {
     .prism-solid, .prism-orbit, .prism-fan i, .prism-beam::after,
-    .ring, .tile, .prism-word { animation: none !important; }
+    .ring, .tile, .prism-word,
+    .fly-stage::before, .fly-stage::after { animation: none !important; }
     .flythrough { height: auto; }
     .fly-stage { position: static; height: auto; padding-block: 60px; perspective: none; }
     .fly-cam { position: static; display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
@@ -1948,9 +2021,17 @@ main, .site-footer { position: relative; z-index: 1; }
         position: static;                /* out of the desktop absolute layout */
         flex: 0 0 auto;
         border-radius: 14px;
+        /* NOT `animation: none` on its own: the desktop fan sets its drift with
+           `.prism-orbit figure:nth-child(1)`, which outranks a plain
+           `.prism-orbit figure` however much later it appears. Without matching
+           that specificity the first three cards keep drifting in 3D while
+           their identical twins in the second half stand still, and the seam
+           stops being invisible. `:nth-child(n)` matches everything and ties on
+           specificity, so being later in the file is enough to win. */
         animation: none;                 /* the track moves, not the cards */
         box-shadow: 0 18px 36px -16px rgba(0,0,0,.9), 0 0 0 1px rgba(255,255,255,.09);
     }
+    .prism-orbit figure:nth-child(n)   { animation: none; }  /* beats the fan's drift */
     .prism-orbit figure:nth-child(n+4) { display: block; }   /* the second half */
 
     /* The three cards are deliberately three different shapes. A row of
@@ -1993,6 +2074,13 @@ main, .site-footer { position: relative; z-index: 1; }
        frames dropped so the GPU holds far fewer layers. */
     .flythrough { height: 260vh; }
     .fly-stage  { perspective: 620px; }
+    /* At 390px a 132px cell puts barely two lines on screen, which reads as a
+       stray diagonal rather than a floor. Tighter cells, and a narrower plane
+       so the convergence still lands inside the viewport. */
+    /* Tighter cells put far more line on a small screen, so the same alpha
+       reads much hotter than it does on a desktop - pulled back to match. */
+    .fly-stage::before { --fly-cell: 62px; width: 150vw; opacity: .68; }
+    .fly-stage::after  { width: min(520px, 96vw); }
     .fly-cam figure { width: clamp(150px, 46vw, 260px); }
     .fly-cam figure:nth-child(n+9) { display: none; }
     .fly-copy h2 { font-size: clamp(1.5rem, 7vw, 2.2rem); }
@@ -2134,6 +2222,25 @@ main, .site-footer { position: relative; z-index: 1; }
     /* No hover on a phone, so every tile turns rather than only the first four. */
     .mosaic .tile { animation: tile-idle 16s var(--ease) infinite;
                     animation-delay: calc(var(--i) * .9s); }
+
+    /* Touch targets. A finger needs roughly 44px; measured at 390px these links
+       were between 13px and 21px tall - the footer legal pair, the "see the full
+       project" links, and, worst of all, the phone/email/WhatsApp links on the
+       contact page, which are the whole point of that page.
+
+       The box grows around the text instead of moving it: inline-flex with
+       centred items leaves the baseline where it was, so the page reads the same
+       and only the hit area changes. Scoped to coarse pointers, so the desktop
+       rhythm is untouched. */
+    .footer-base a,
+    .post-card-more,
+    .contact-item .v a {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+    }
+    /* Already a circle - it just becomes a comfortable one. */
+    .socials a { width: 44px; height: 44px; }
 }
 
 
