@@ -1536,9 +1536,13 @@ p:last-child { margin-bottom: 0; }
 
 .fly-stage::before {
     left: 50%; top: 50%;
-    width: 190vw; height: 110vh;
+    width: 150vw; height: 92vh;
     transform-origin: 50% 0;
     transform: translateX(-50%) rotateX(82deg);
+    /* Its own layer. The plane is large, masked and rotated; without this the
+       compositor re-rasterises it against everything behind it. */
+    will-change: transform;
+    backface-visibility: hidden;
     /* One cell size drives the grid AND the drift, so they can never fall out of
        step - the loop has to travel exactly one cell or the movement stutters. */
     --fly-cell: 132px;
@@ -1559,7 +1563,18 @@ p:last-child { margin-bottom: 0; }
             mask-composite: intersect;
     animation: fly-floor 7s linear infinite;
 }
-@keyframes fly-floor { to { background-position: 0 var(--fly-cell), 0 var(--fly-cell); } }
+/* Moves the PLANE, not the background inside it.
+
+   This used to animate `background-position`, which is not a compositor
+   property: every frame repainted a 2736x983 masked, 3D-rotated layer, and the
+   section ran at 38fps against 120fps with the grid switched off. Translating
+   the element along its own local Y - which, once rotated into the floor, is
+   straight down the corridor - is the same movement for free. One cell exactly,
+   so the loop is seamless. */
+@keyframes fly-floor {
+    from { transform: translateX(-50%) rotateX(82deg) translateY(0); }
+    to   { transform: translateX(-50%) rotateX(82deg) translateY(var(--fly-cell)); }
+}
 
 .fly-stage::after {
     left: 50%; top: 46%;
